@@ -2,7 +2,10 @@ import requests
 from flask import Flask, request, jsonify
 from dotenv import load_dotenv
 import os
+import base64
 
+# Load environment variables
+load_dotenv()
 client_id = os.getenv("GITHUB_CLIENT_ID")
 client_secret = os.getenv("GITHUB_CLIENT_SECRET")
 token = os.getenv("GITHUB_ACCESS_TOKEN")
@@ -12,10 +15,7 @@ app = Flask(__name__)
 
 @app.route('/authenticate', methods=['POST'])
 def authenticate():
-    client_id = "YOUR_GITHUB_CLIENT_ID"
-    client_secret = "YOUR_GITHUB_CLIENT_SECRET"
     code = request.json.get("code")
-
     token_url = "https://github.com/login/oauth/access_token"
     headers = {"Accept": "application/json"}
     payload = {
@@ -23,30 +23,26 @@ def authenticate():
         "client_secret": client_secret,
         "code": code,
     }
-
     response = requests.post(token_url, headers=headers, json=payload)
     return jsonify(response.json())
 
 @app.route('/save', methods=['POST'])
 def save_code():
-    token = "YOUR_GITHUB_ACCESS_TOKEN"
-    repo = "YOUR_USERNAME/YOUR_REPOSITORY"
     data = request.json
-
     headers = {
         "Authorization": f"token {token}",
         "Accept": "application/vnd.github.v3+json",
     }
-
-    # File path and content
     file_path = f"LeetCode/{data['title'].replace(' ', '_')}.{data['language']}"
-    content = data["code"].encode("utf-8").decode("unicode_escape")
+    content = base64.b64encode(data["code"].encode("utf-8")).decode("utf-8")
     payload = {
         "message": f"Add solution for {data['title']}",
-        "content": content.encode("utf-8").decode("unicode_escape"),
+        "content": content,
     }
-
-    # GitHub API to create/update file
     url = f"https://api.github.com/repos/{repo}/contents/{file_path}"
     response = requests.put(url, headers=headers, json=payload)
     return jsonify(response.json())
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
